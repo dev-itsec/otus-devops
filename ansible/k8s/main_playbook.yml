@@ -1,0 +1,9 @@
+---
+- ansible.builtin.import_playbook: kube_dependencies.yml
+- ansible.builtin.import_playbook: kube_master.yml
+- ansible.builtin.import_playbook: kube_nodes.yml
+- ansible.builtin.import_playbook: kube_ingress.yml
+- ansible.builtin.import_playbook: kube_dashboard.yml
+- ansible.builtin.import_playbook: kube_dashboard_ingress.yml
+- ansible.builtin.import_playbook: kube_terminal_k9s.yml
+- ansible.builtin.import_playbook: kube_output_clusterinfo.yml

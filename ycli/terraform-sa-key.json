@@ -1,0 +1,8 @@
+{
+   "id": "ajeg9...kq51",
+   "service_account_id": "ajef3...qq1fu",
+   "created_at": "2025-05-28T19:24:05.626482017Z",
+   "key_algorithm": "RSA_2048",
+   "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BA...iKmjJFSaXtqY3fo\nN67czAiItqlFFdZYU6...fgxT7JWoMN2Uvo8a\n5PY/BxTL33OIb2DU5/3...Mg3YK4+8/gYugdsw\n2qWb+di3ZKRgYft...nEzL1X9vI99sr3jv47utEQzN+\nWqsuvF9PBJ9v8S+9qwOAXBHI...a+CM5PByyNRFiczp3\nLqTmguiq3QPWTxJMDUEKglvKQp..Rm37ZCXqcpx8Z\nSwIDAQAB\n-----END PUBLIC KEY-----\n",
+   "private_key": "PLEASE DO NOT REMOVE THIS LINE! Yandex.Cloud SA Key ID \u003cajeg99n8p7ddc6ltkq51\u003e\n-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkq...IBAQCffA2+IqaMkVJp\ne2pjd+g3r...LV5WSIikGJZh+DFPslagw\n3ZS+jxrk9j8HFMvfc4hvY...B6j5HHG0yDdgrj7z+\nBi6B2zDapZv52LdkpGBh...vVf28j32yveO/ju\n60RDM35aqy68X08En...shREQn1ZNdr4Izk8HLI1\nEWJzOncupOaC6Kr...otlM1M0ziz9GbftkJ\nepynHxlLAgMBAAECggEADNt...U394+kawv\nj1WbinufnX5hNV0gwlC...vXwBCn+VzHB\nHG8jmBnXxya4Mmgk...F5LpKT46KGIwOm4c\nPKjoz3OC33b9swBBkj9Sfg==\n-----END PRIVATE KEY-----\n"
+}

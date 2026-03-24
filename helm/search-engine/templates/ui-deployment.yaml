@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-ui
+  template:
+    metadata:
+      labels:
+        app: search-ui
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret | quote }}
+      containers:
+        - name: ui
+          image: {{ .Values.ui.image }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MONGO
+              value: mongodb
+            - name: MONGO_PORT
+              value: "{{ .Values.mongodb.port }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-ui
+spec:
+  selector:
+    app: search-ui
+  ports:
+    - port: {{ .Values.ui.port }}
+      targetPort: 8000

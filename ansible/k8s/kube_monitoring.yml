@@ -1,0 +1,95 @@
+---
+- name: Deploy Monitoring Stack with Helm in Kubernetes
+  hosts: master
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Add Prometheus Helm repo if not present
+      shell: helm repo list | grep -q '^prometheus-community' || helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+    - name: Add Grafana Helm repo if not present
+      shell: helm repo list | grep -q '^grafana' || helm repo add grafana https://grafana.github.io/helm-charts
+
+    - name: Update Helm repos
+      shell: helm repo update
+
+    - name: Install or upgrade Loki stack
+      shell: >
+        helm upgrade --install loki grafana/loki-stack
+        -n monitoring
+        --create-namespace
+        --set loki.isDefault=false
+
+    - name: Create prom-delay.yaml file
+      copy:
+        dest: /tmp/prom-delay.yaml
+        content: |
+          prometheus:
+            prometheusSpec:
+              maximumStartupDurationSeconds: 600
+
+    - name: Install or upgrade kube-prometheus-stack
+      shell: >
+        helm upgrade --install prom prometheus-community/kube-prometheus-stack
+        -n monitoring
+        -f /tmp/prom-delay.yaml
+        --set grafana.adminUser={{ grafana_admin_user }}
+        --set grafana.adminPassword={{ grafana_admin_password }}
+
+    - name: Create Grafana/Prometheus Ingress manifest
+      copy:
+        dest: /tmp/grafana-prometheus-ingress.yaml
+        content: |
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: monitoring-ingress
+            namespace: monitoring
+            annotations:
+              nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+              cert-manager.io/cluster-issuer: http01-clusterissuer
+              nginx.ingress.kubernetes.io/rewrite-target: /
+          spec:
+            ingressClassName: nginx
+            tls:
+              - hosts:
+                  - {{ grafana_host }}
+                  - {{ prometheus_host }}
+                secretName: monitoring-tls
+            rules:
+              - host: {{ grafana_host }}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: prom-grafana
+                          port:
+                            number: {{ grafana_port }}
+              - host: {{ prometheus_host }}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: prom-kube-prometheus-stack-prometheus
+                          port:
+                            number: {{ prometheus_port }}
+
+    - name: Apply Ingress manifest
+      shell: kubectl apply -f /tmp/grafana-prometheus-ingress.yaml
+
+    - name: Show access links and credentials
+      debug:
+        msg: |
+          ✅ Мониторинг успешно установлен!
+          🔗 Grafana: https://{{ grafana_host }}
+              👤 Логин: {{ grafana_admin_user }}
+              🔑 Пароль: {{ grafana_admin_password }}
+          🔗 Prometheus: https://{{ prometheus_host }}

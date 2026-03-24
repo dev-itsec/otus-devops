@@ -1,0 +1,14 @@
+- name: Вывести команды подключения к master и ingress нодам
+  hosts: master:ingress
+  gather_facts: no
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Показать команды подключения
+      debug:
+        msg: >-
+          {% if 'master' in group_names %}
+          ###### Подключиться к master-ноде (SSH): ssh {{ ansible_user | default('ubuntu') }}@{{ ansible_host }} ######
+          {% elif 'ingress' in group_names %}
+          ###### Подключиться с токеном выше к Kubernetes Dashboard (HTTPS): https://{{ ansible_host }}:30443 или https://{{ k8s_dashboard_url }}:30443 ######
+          {% endif %}

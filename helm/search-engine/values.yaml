@@ -1,0 +1,40 @@
+imagePullSecret: yandex-gitlab-container-registry
+
+ingress:
+  name: search-ui-ingress
+  className: nginx
+  clusterIssuer: http01-clusterissuer
+  tlsSecret: search-ui-rmq-tls
+  uiHost: ui.asterisker.com
+  rmqHost: rmq.asterisker.com
+
+services:
+  ui:
+    name: search-ui
+    port: 8000
+  rmq:
+    name: rabbitmq
+    port: 15672
+
+ui:
+  image: otusteam.gitlab.yandexcloud.net:5050/devops/devops-2024-11/ildar.l/my-work/search_engine_ui
+  port: 8000
+  host: ui.asterisker.com
+
+crawler:
+  image: otusteam.gitlab.yandexcloud.net:5050/devops/devops-2024-11/ildar.l/my-work/search_engine_crawler
+  port: 8008
+
+mongodb:
+  image: mongo:5
+  port: 27017
+  volumeSize: 1Gi
+
+rabbitmq:
+  image: rabbitmq:3-management
+  port: 5672
+  uiPort: 15672
+  host: rmq.asterisker.com
+  username: guest
+  password: guest
+  queue: search_engine_queue

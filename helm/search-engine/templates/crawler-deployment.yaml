@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-crawler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-crawler
+  template:
+    metadata:
+      labels:
+        app: search-crawler
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret | quote }}
+      containers:
+        - name: crawler
+          image: {{ .Values.crawler.image }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MONGO
+              value: mongodb
+            - name: MONGO_PORT
+              value: "{{ .Values.mongodb.port }}"
+            - name: RMQ_HOST
+              value: rabbitmq
+            - name: RMQ_QUEUE
+              value: {{ .Values.rabbitmq.queue }}
+            - name: RMQ_USERNAME
+              value: {{ .Values.rabbitmq.username }}
+            - name: RMQ_PASSWORD
+              value: {{ .Values.rabbitmq.password }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-crawler
+spec:
+  selector:
+    app: search-crawler
+  ports:
+    - port: {{ .Values.crawler.port }}
+      targetPort: 8000

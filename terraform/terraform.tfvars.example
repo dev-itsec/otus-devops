@@ -1,0 +1,130 @@
+#yc_token                                    = ""
+#yc_cloud_id                                 = ""
+#yc_folder_id                                = ""
+# При использовании скрипта ./run_terraform.sh эти данные берутся из переменных окружения TF_VAR_* 
+
+yc_zone                                     = "ru-central1-b"
+
+ssh_username                                = "ubuntu"
+ssh_public_key_path                         = "~/.ssh/terraform_key.pub"
+ssh_private_key_path                        = "~/.ssh/terraform_key" # закрытый ключ должен быть без пароля
+
+# Terraform не умеет вводить пароль от приватного ключа
+# Генерация пары ключей terraform_key на локальном хосте
+# -N ""	Устанавливает пустую passphrase (без пароля)
+# ssh-keygen -t ed25519 -f ~/.ssh/terraform_key -N ""
+
+serial_port_on                              = 1
+
+public_subnet_name                          = "public-subnet"
+private_subnet_name                         = "private-subnet"
+
+bastion_instance = {
+  name              = "bastion"
+  image_name        = "ubuntu-2404-lts"
+  cores             = 2
+  cpu_platform      = "standard-v3" # Intel Ice Lake
+  core_fraction     = 20            # Гарантированная доля vCPU в %
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd" # SSD - network-ssd, HDD - network-hdd
+  preemptible       = true          # true - прерываемая машина
+  public_nat        = true          # true - с публичным динамическим IP
+  private_nat       = false         # false - без публичного динамическим IP
+  public_secgroup   = "bastion-public-sg"
+  private_secgroup  = "bastion-private-sg"
+}
+
+nat_instance = {
+  name              = "nat-vm"
+  image_name        = "nat-instance-ubuntu"
+  cores             = 2
+  cpu_platform      = "standard-v3" 
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd"
+  preemptible       = true
+  nat               = true
+  secgroup          = "nat-vm-sg"
+}
+
+gitlab_instance = {
+  name              = "gitlab"
+  image_name        = "gitlab"
+  cores             = 2
+  cpu_platform      = "standard-v3" 
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd" 
+  preemptible       = true
+  nat               = true
+  secgroup          = "gitlab-sg"
+}
+
+harbor_instance = {
+  name              = "harbor"
+  image_name        = "ubuntu-2404-lts"
+  cores             = 2
+  cpu_platform      = "standard-v3" 
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd"
+  preemptible       = true
+  nat               = true
+  secgroup          = "harbor-sg"
+}
+
+#############################
+### K8s Cluster ###
+#############################
+
+k8s_master_count = 1 # Количество создаваемых машин под роль master
+
+k8s_master_config = {
+  name_prefix       = "k8s-master"
+  image_name        = "ubuntu-2404-lts"
+  cores             = 2
+  cpu_platform      = "standard-v3" 
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd"
+  preemptible       = true
+  nat               = false
+  secgroup          = "k8s-master-sg"
+}
+
+k8s_ingress_count = 1 # Количество создаваемых машин под роль ingress
+
+k8s_ingress_config = {
+  name_prefix       = "k8s-ingress"
+  image_name        = "ubuntu-2404-lts"
+  cores             = 2
+  cpu_platform      = "standard-v3" 
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd"
+  preemptible       = true
+  nat               = false
+  secgroup          = "k8s-ingress-sg"
+}
+
+k8s_node_count = 1 # Количество создаваемых машин под роль node
+
+k8s_node_config = {
+  name_prefix       = "k8s-node"
+  image_name        = "ubuntu-2404-lts"
+  cores             = 2
+  cpu_platform      = "standard-v3"
+  core_fraction     = 20
+  memory            = 2
+  bootdisk_size     = 10
+  bootdisk_type     = "network-hdd"
+  preemptible       = true
+  nat               = false
+  secgroup          = "k8s-node-sg"
+}

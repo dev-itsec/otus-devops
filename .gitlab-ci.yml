@@ -1,0 +1,100 @@
+stages:
+  - build
+  - deploy
+  - test
+  - destroy
+
+variables:
+  DOCKER_REGISTRY: asterisker.gitlab.yandexcloud.net:5050
+  IMAGE_PATH: devops/devops-2024-11/asterisker/my-work
+  IMAGE_TAG: latest
+  KUBE_NAMESPACE: production
+  CHART_PATH: helm/search-engine
+  HELM_RELEASE_NAME: search-engine
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug # debug release 
+    entrypoint: [""]
+  script:
+    - echo "=== Check ENV ==="
+    - pwd
+    - ls -a 
+
+    - echo "=== Logging in to Yandex GitLab Container Registry ==="
+    - echo "{\"auths\":{\"$DOCKER_REGISTRY\":{\"username\":\"$DOCKER_REGISTRY_USER\",\"password\":\"$DOCKER_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+
+    - echo "Building and pushing search_engine_ui"
+    - /kaniko/executor --context src/ui/ --dockerfile src/ui/Dockerfile --destination $DOCKER_REGISTRY/$IMAGE_PATH/search_engine_ui:$IMAGE_TAG 
+    # --cache=false отключаем кэширование слоев
+
+    - echo "Building and pushing search_engine_crawler"
+    - /kaniko/executor --context src/crawler/ --dockerfile src/crawler/Dockerfile --destination $DOCKER_REGISTRY/$IMAGE_PATH/search_engine_crawler:$IMAGE_TAG
+    # --cache=false отключаем кэширование слоев
+
+    - echo "=== Building and pushing - Done! ==="
+  tags:
+    - myrunner3
+
+deploy:
+  stage: deploy
+  image: dtzar/helm-kubectl:3.9
+  script:
+    - echo === Testing Helm Lint ===
+    - helm lint $CHART_PATH
+
+    - echo === Creating namespace ===
+    - kubectl create namespace "$KUBE_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+    - echo === Creating secret to pull from private Yandex GitLab Container Registry ===
+    - |
+      kubectl create secret docker-registry yandex-gitlab-container-registry \
+        --docker-server="$DOCKER_REGISTRY" \
+        --docker-username="$DOCKER_REGISTRY_USER" \
+        --docker-password="$DOCKER_REGISTRY_PASSWORD" \
+        -n $KUBE_NAMESPACE \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    - echo === Checking secret ===
+    - kubectl get secret -n $KUBE_NAMESPACE
+
+    - echo === Deploying Helm Release ===
+    - |
+      helm upgrade --install "$HELM_RELEASE_NAME" "$CHART_PATH" \
+        --namespace "$KUBE_NAMESPACE" \
+        --set image.repository="$DOCKER_REGISTRY/$IMAGE_PATH" \
+        --set image.tag="$IMAGE_TAG"
+    
+    - kubectl get pods -n $KUBE_NAMESPACE
+    - helm ls --namespace "$KUBE_NAMESPACE"
+  tags:
+    - myrunner3
+
+test:
+  stage: test
+  image: dtzar/helm-kubectl:3.9
+  script:
+    - echo === Waiting 60 seconds ===
+    - sleep 60
+
+    - echo ===  Testing App via Ingress ===
+    - date
+    - curl -k -fv https://ui.asterisker.com || (echo "Dashboard not responding" && exit 1)
+  dependencies:
+    - deploy
+  tags:
+    - myrunner3
+
+destroy:
+  stage: destroy
+  image: dtzar/helm-kubectl:3.9
+  when: manual
+  script:
+    - echo === Destroying Helm Release ===
+    - helm uninstall "$HELM_RELEASE_NAME" --namespace "$KUBE_NAMESPACE"
+    
+    - helm ls --namespace "$KUBE_NAMESPACE"
+    - echo ==== Helm Release destroyed ===
+  tags:
+    - myrunner3

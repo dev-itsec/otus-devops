@@ -1,0 +1,30 @@
+# Версия ОС. Допускается ubuntu или debian 
+OS: "ubuntu"
+
+# Версия кубера
+k8s_ver: "1.29"
+
+# Диапозон IP адресов, в котором будет размещаться кластер K8S 
+net_diapozon: "10.244.0.0/16"
+
+# Имя пользователя администратора
+root: "ubuntu"
+
+# Настройки Ingress Controller
+kubeconfig_path: /etc/kubernetes/admin.conf
+ingress_target_node: k8s-ingress-1
+cert_email: test@domain.com
+k8s_dashboard_url: dash.k8s.asterisker.com
+
+# Настройки Gitlab Runner to K8s
+gitlab_url: http://89.169.173.46
+runner_registration_token: glrt-bzoxCnA6MQp0Oj...hA.1714yd6x1
+
+# Настройки мониторинга Grafana и Prometheus
+grafana_host: grafana.asterisker.com
+grafana_port: 80
+grafana_admin_user: admin
+grafana_admin_password: prom-operator
+prometheus_host: prom.asterisker.com
+prometheus_port: 9090
+

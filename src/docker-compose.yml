@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+### Search Engine UI
+  ui:
+    container_name: search_ui
+    build:
+      context: ./search_engine_ui
+    ports:
+      - "${UI_PORT}:8000"
+    environment:
+      - MONGO=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+    networks:
+      - search_engine_network
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+
+### Search Engine Crawler
+  crawler:
+    container_name: search_crawler
+    build:
+      context: ./search_engine_crawler
+    ports:
+      - "${CRAWLER_PORT}:8000"
+    environment:
+      - MONGO=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - RMQ_HOST=${RMQ_HOST}
+      - RMQ_QUEUE=${RMQ_QUEUE}
+      - RMQ_USERNAME=${RMQ_USERNAME}
+      - RMQ_PASSWORD=${RMQ_PASSWORD}
+    networks:
+      - search_engine_network
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - mongodb
+
+### MongoDB 
+  mongodb:
+    container_name: mongodb
+    image: mongo:5
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - search_engine_mongodb_data:/data/db
+    networks:
+      - search_engine_network
+    restart: unless-stopped
+
+### RabbitMQ
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "${RMQ_PORT}:5672"
+      - "${RMQ_UI_PORT}:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RMQ_PASSWORD}
+    networks:
+      - search_engine_network
+    restart: unless-stopped
+
+volumes:
+  search_engine_mongodb_data:
+    name: search_engine_mongodb_data
+
+networks:
+  search_engine_network:
+    name: search_engine_network

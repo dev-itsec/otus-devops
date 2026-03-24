@@ -1,0 +1,75 @@
+- name: Install ingress-nginx and cert-manager on specific node
+  hosts: master
+  become: yes
+  vars_files:
+    - vars.yml
+  tasks:
+
+    - name: Label ingress node with ingress role
+      command: kubectl label node {{ ingress_target_node }} node-role.kubernetes.io/ingress="" --overwrite --kubeconfig {{ kubeconfig_path }}
+      register: label_result
+      changed_when: "'labeled' in label_result.stdout or 'updated' in label_result.stdout"
+
+    - name: Install Helm (if not installed)
+      shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add ingress-nginx Helm repository
+      command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      args:
+        creates: /root/.helm_repo_added
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Install ingress-nginx with nodeSelector to specific node
+      command: >
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
+        --namespace ingress-nginx --create-namespace
+        --set controller.nodeSelector."kubernetes\.io/hostname"={{ ingress_target_node }}
+        --set controller.replicaCount=1
+        --set controller.minReadySeconds=0
+        --set controller.progressDeadlineSeconds=60
+        --set controller.service.type=NodePort
+        --set controller.service.nodePorts.http=30080
+        --set controller.service.nodePorts.https=30443
+        --kubeconfig {{ kubeconfig_path }}
+
+    - name: Install cert-manager CRDs
+      shell: |
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml --kubeconfig {{ kubeconfig_path }}
+
+    - name: Install cert-manager components
+      shell: |
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml --kubeconfig {{ kubeconfig_path }}
+
+    - name: Wait for cert-manager deployment rollout
+      shell: |
+        kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s --kubeconfig {{ kubeconfig_path }}
+
+    - name: Create ClusterIssuer manifest for Let's Encrypt
+      copy:
+        dest: /tmp/clusterissuer.yaml
+        content: |
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: http01-clusterissuer
+          spec:
+            acme:
+              server: https://acme-v02.api.letsencrypt.org/directory
+              email: {{ cert_email }}
+              privateKeySecretRef:
+                name: http01-clusterissuer-key
+              solvers:
+              - http01:
+                  ingress:
+                    class: nginx
+
+    - name: Wait for cert-manager webhook to be ready
+      shell: kubectl rollout status deployment cert-manager-webhook -n cert-manager --timeout=120s --kubeconfig {{ kubeconfig_path }}
+
+    - name: Apply ClusterIssuer manifest
+      shell: kubectl apply -f /tmp/clusterissuer.yaml --kubeconfig {{ kubeconfig_path }}

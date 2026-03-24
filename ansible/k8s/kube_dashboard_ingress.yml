@@ -1,0 +1,50 @@
+- name: Expose Kubernetes Dashboard via Ingress with TLS
+  hosts: master
+  become: yes
+  vars_files:
+    - vars.yml
+  tasks:
+
+    - name: Create Ingress resource for Dashboard with TLS
+      copy:
+        dest: /tmp/dashboard-ingress.yaml
+        content: |
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: kubernetes-dashboard
+            namespace: kubernetes-dashboard
+            annotations:
+              nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+              cert-manager.io/cluster-issuer: http01-clusterissuer
+              nginx.ingress.kubernetes.io/rewrite-target: /
+          spec:
+            ingressClassName: nginx
+            tls:
+              - hosts:
+                  - {{ k8s_dashboard_url }}
+                secretName: dashboard-tls
+            rules:
+              - host: {{ k8s_dashboard_url }}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: kubernetes-dashboard
+                          port:
+                            number: 80
+
+    - name: Apply Ingress manifest
+      shell: kubectl apply -f /tmp/dashboard-ingress.yaml --kubeconfig {{ kubeconfig_path }}
+
+    - name: Print Ingress status
+      shell: kubectl get ingress -n kubernetes-dashboard --kubeconfig {{ kubeconfig_path }}
+      register: ingress_status
+
+    - name: Show Ingress result
+      debug:
+        var: ingress_status.stdout_lines
+

@@ -1,0 +1,85 @@
+---
+- name: Deploy Default Kubernets Dashboard
+  hosts: master
+  vars_files:
+    - vars.yml
+  become: yes
+  tasks:
+    - name: 1
+      shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.6.1/aio/deploy/recommended.yaml
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+    - name: 2
+      shell: |
+             cat <<EOF | kubectl apply -f -
+             apiVersion: v1
+             kind: ServiceAccount
+             metadata:
+               name: admin-user
+               namespace: kubernetes-dashboard
+             EOF
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+    - name: 3
+      shell: |
+            cat <<EOF | kubectl apply -f -
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: admin-user
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: cluster-admin
+            subjects:
+            - kind: ServiceAccount
+              name: admin-user
+              namespace: kubernetes-dashboard
+            EOF
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+
+    - name: 4
+      shell: kubectl -n kubernetes-dashboard create token admin-user
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+      register: admin_token
+      
+    - name: Print admin user token
+      debug:
+        msg: "Admin user token: {{ admin_token.stdout }}"
+    
+    - name: 5 
+      copy:
+        content: |
+            apiVersion: v1
+            kind: Service
+            metadata:
+              labels:
+                k8s-app: kubernetes-dashboard
+              name: kubernetes-dashboard
+              namespace: kubernetes-dashboard
+            spec:
+              ports:
+                - port: 80
+                  targetPort: 8443
+              selector:
+                k8s-app: kubernetes-dashboard
+              type: ClusterIP
+        dest: /tmp/kubernetes-dashboard-service.yaml
+ 
+
+    - name: 6
+      shell: kubectl apply -f /tmp/kubernetes-dashboard-service.yaml
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+   
+    - name: 7
+      shell: kubectl get services -n kubernetes-dashboard
+      environment:
+        KUBECONFIG: "/home/{{ root }}/.kube/config"
+      register: services_output
+
+    - name: Print services output
+      debug:
+        var: services_output.stdout_lines

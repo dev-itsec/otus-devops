@@ -1,0 +1,40 @@
+---
+- name: Install GitLab Runner with Helm in Kubernetes
+  hosts: master
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Add GitLab Helm repo if not present
+      shell: |
+        helm repo list | grep -q '^gitlab' || helm repo add gitlab https://charts.gitlab.io
+
+    - name: Update Helm repos
+      shell: helm repo update
+
+    - name: Install or upgrade GitLab Runner Helm chart
+      shell: >
+        helm upgrade --install gitlab-runner gitlab/gitlab-runner
+        --namespace gitlab-runners
+        --create-namespace
+        --set serviceAccount.create=true
+        --set serviceAccount.name=gitlab-runner-sa
+        --set gitlabUrl={{ gitlab_url }}
+        --set runnerRegistrationToken={{ runner_registration_token }}
+
+    - name: Create clusterrolebinding for gitlab-runner-sa if not exists
+      shell: |
+        kubectl get clusterrolebinding gitlab-runner-admin-sa1 || \
+        kubectl create clusterrolebinding gitlab-runner-admin-sa1 \
+        --clusterrole=cluster-admin \
+        --serviceaccount=gitlab-runners:gitlab-runner-sa
+
+    - name: Create clusterrolebinding for default sa if not exists
+      shell: |
+        kubectl get clusterrolebinding gitlab-runner-admin-sa2 || \
+        kubectl create clusterrolebinding gitlab-runner-admin-sa2 \
+        --clusterrole=cluster-admin \
+        --serviceaccount=gitlab-runners:default
+
